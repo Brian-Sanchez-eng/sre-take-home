@@ -1,5 +1,6 @@
 name: pr-validation
 
+# Validates pull requests: build, test, package, and image scan.
 on:
   pull_request:
     branches: [main]

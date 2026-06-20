@@ -1,6 +1,7 @@
-# syntax=docker/dockerfile:1
-
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+##
+########
+# Pinned to the SDK feature band in global.json (10.0.200) for reproducible builds.
+FROM mcr.microsoft.com/dotnet/sdk:10.0.200 AS build
 ARG BUILD_CONFIGURATION=Release
 ARG VERSION=0.0.0
 WORKDIR /src

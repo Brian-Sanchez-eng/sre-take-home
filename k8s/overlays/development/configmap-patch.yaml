@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: candidate-api-config
+data:
+  ASPNETCORE_ENVIRONMENT: "Development"
+  CandidateApi__Region: "dev-eastus2"

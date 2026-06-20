@@ -113,3 +113,53 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: '1'
+
+  # End-to-end: build the image, deploy both overlays to a throwaway kind
+  # cluster, and confirm each environment becomes Ready.
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ghcr.io/brian-sanchez-eng/sre-take-home/candidate-api:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: ${{ env.IMAGE }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: e2e
+
+      - name: Load image into kind
+        run: kind load docker-image "$IMAGE" --name e2e
+
+      - name: Apply dev and test overlays
+        run: |
+          kubectl apply -k k8s/overlays/development
+          kubectl apply -k k8s/overlays/test
+
+      - name: Wait for rollouts
+        run: |
+          kubectl -n candidate-api-dev rollout status deploy/candidate-api --timeout=120s
+          kubectl -n candidate-api-test rollout status deploy/candidate-api --timeout=120s
+
+      - name: Smoke test readiness
+        run: |
+          set -e
+          for ns in candidate-api-dev candidate-api-test; do
+            kubectl -n "$ns" port-forward svc/candidate-api 18080:80 >/dev/null 2>&1 &
+            pf=$!
+            sleep 4
+            curl -fsS http://127.0.0.1:18080/health/ready && echo " <- $ns ready"
+            kill "$pf"
+          done

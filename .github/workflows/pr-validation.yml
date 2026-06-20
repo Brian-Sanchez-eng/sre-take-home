@@ -106,7 +106,7 @@ jobs:
 
       # Self-contained gate: fail the PR on fixable CRITICAL/HIGH CVEs.
       - name: Scan image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: candidate-api:pr-${{ github.run_number }}
           format: table

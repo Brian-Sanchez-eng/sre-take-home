@@ -1,0 +1,114 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: candidate-api-slo
+  labels:
+    app.kubernetes.io/name: candidate-api
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: candidate-api.sli
+      interval: 30s
+      rules:
+        # Availability SLI: fraction of ingress requests that return 5xx.
+        # Measured at the edge, no application instrumentation required.
+        - record: candidate_api:request_errors:ratio_rate5m
+          expr: |
+            sum(rate(nginx_ingress_controller_requests{ingress="candidate-api",status=~"5.."}[5m]))
+            /
+            sum(rate(nginx_ingress_controller_requests{ingress="candidate-api"}[5m]))
+        - record: candidate_api:request_errors:ratio_rate30m
+          expr: |
+            sum(rate(nginx_ingress_controller_requests{ingress="candidate-api",status=~"5.."}[30m]))
+            /
+            sum(rate(nginx_ingress_controller_requests{ingress="candidate-api"}[30m]))
+        - record: candidate_api:request_errors:ratio_rate1h
+          expr: |
+            sum(rate(nginx_ingress_controller_requests{ingress="candidate-api",status=~"5.."}[1h]))
+            /
+            sum(rate(nginx_ingress_controller_requests{ingress="candidate-api"}[1h]))
+        - record: candidate_api:request_errors:ratio_rate2h
+          expr: |
+            sum(rate(nginx_ingress_controller_requests{ingress="candidate-api",status=~"5.."}[2h]))
+            /
+            sum(rate(nginx_ingress_controller_requests{ingress="candidate-api"}[2h]))
+        - record: candidate_api:request_errors:ratio_rate6h
+          expr: |
+            sum(rate(nginx_ingress_controller_requests{ingress="candidate-api",status=~"5.."}[6h]))
+            /
+            sum(rate(nginx_ingress_controller_requests{ingress="candidate-api"}[6h]))
+        - record: candidate_api:request_errors:ratio_rate1d
+          expr: |
+            sum(rate(nginx_ingress_controller_requests{ingress="candidate-api",status=~"5.."}[1d]))
+            /
+            sum(rate(nginx_ingress_controller_requests{ingress="candidate-api"}[1d]))
+        - record: candidate_api:request_errors:ratio_rate3d
+          expr: |
+            sum(rate(nginx_ingress_controller_requests{ingress="candidate-api",status=~"5.."}[3d]))
+            /
+            sum(rate(nginx_ingress_controller_requests{ingress="candidate-api"}[3d]))
+
+    # SLO: 99.9% availability over 30d -> error budget 0.1%.
+    # Multi-window, multi-burn-rate alerting (Google SRE workbook): a short
+    # window confirms the burn is current, a long window confirms it is real.
+    - name: candidate-api.slo-burn
+      rules:
+        - alert: CandidateApiErrorBudgetBurnFast
+          expr: |
+            candidate_api:request_errors:ratio_rate1h > (14.4 * 0.001)
+            and
+            candidate_api:request_errors:ratio_rate5m > (14.4 * 0.001)
+          for: 2m
+          labels:
+            severity: critical
+            slo: candidate-api-availability
+          annotations:
+            summary: "Fast error-budget burn (14.4x) on candidate-api"
+            description: "Burning the 30d error budget 14.4x; ~2% consumed in 1h. Page on-call."
+        - alert: CandidateApiErrorBudgetBurnMedium
+          expr: |
+            candidate_api:request_errors:ratio_rate6h > (6 * 0.001)
+            and
+            candidate_api:request_errors:ratio_rate30m > (6 * 0.001)
+          for: 5m
+          labels:
+            severity: critical
+            slo: candidate-api-availability
+          annotations:
+            summary: "Sustained error-budget burn (6x) on candidate-api"
+            description: "Burning the 30d error budget 6x over 6h. Page on-call."
+        - alert: CandidateApiErrorBudgetBurnSlow
+          expr: |
+            candidate_api:request_errors:ratio_rate1d > (3 * 0.001)
+            and
+            candidate_api:request_errors:ratio_rate2h > (3 * 0.001)
+          for: 15m
+          labels:
+            severity: warning
+            slo: candidate-api-availability
+          annotations:
+            summary: "Slow error-budget burn (3x) on candidate-api"
+            description: "Burning the 30d error budget 3x over 1d. Open a ticket."
+        - alert: CandidateApiErrorBudgetBurnTrickle
+          expr: |
+            candidate_api:request_errors:ratio_rate3d > (1 * 0.001)
+            and
+            candidate_api:request_errors:ratio_rate6h > (1 * 0.001)
+          for: 1h
+          labels:
+            severity: warning
+            slo: candidate-api-availability
+          annotations:
+            summary: "Low-grade error-budget burn on candidate-api"
+            description: "Steady 1x burn over 3d will exhaust the monthly budget. Open a ticket."
+
+    - name: candidate-api.availability
+      rules:
+        - alert: CandidateApiProbeDown
+          expr: probe_success{service="candidate-api"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "candidate-api readiness probe failing ({{ $labels.instance }})"
+            description: "Blackbox probe of /health/ready has failed for 2m."

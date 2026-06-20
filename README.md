@@ -1,5 +1,23 @@
 # SRE Take-Home Assessment
 
+## Solution (candidate submission)
+
+The SRE deliverables wrap the provided app without changing its code. Start here:
+
+- `docs/SOLUTION.md` — overview, how to validate, tradeoffs, and assumptions.
+- `docs/DEPLOYMENT.md` — pipelines, environments, secrets, and rollback.
+- `docs/RUNBOOK.md` — readiness-failure runbook.
+- `observability/README.md` — SLO, error budget, and burn-rate alerting.
+- `k8s/rollouts/README.md` — canary strategy with automated rollback.
+
+Layout: `Dockerfile` and `.github/workflows/` (CI/CD), `k8s/` (base + dev/test
+overlays + canary), `observability/` (SLO rules, blackbox probe, dashboard).
+
+Senior extensions chosen: Observability & SLOs, and Advanced Kubernetes &
+Deployment Strategy.
+
+---
+
 ## Instructions
 
 Fork this repository and follow the guidelines below. When you are finished, or when you have run out of time, share a link to your forked repository back with the hiring team for review.

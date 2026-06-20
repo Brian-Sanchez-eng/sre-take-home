@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Production canary strategy. Applied on top of an environment overlay that
+# already provides the Deployment (pod template), ConfigMap, and ServiceAccount.
+resources:
+  - services.yaml
+  - ingress.yaml
+  - analysistemplate.yaml
+  - rollout.yaml

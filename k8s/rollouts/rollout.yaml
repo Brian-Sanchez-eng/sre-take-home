@@ -1,0 +1,45 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: candidate-api
+  labels:
+    app.kubernetes.io/name: candidate-api
+spec:
+  replicas: 3
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: candidate-api
+  # Reuse the base Deployment's pod template; the controller scales the
+  # Deployment down as the Rollout takes over.
+  workloadRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: candidate-api
+    scaleDown: progressively
+  strategy:
+    canary:
+      canaryService: candidate-api-canary
+      stableService: candidate-api-stable
+      trafficRouting:
+        nginx:
+          stableIngress: candidate-api
+      # Analysis runs against platform (ingress) metrics on every step; a
+      # failed measurement aborts the rollout and shifts traffic back to stable.
+      analysis:
+        templates:
+          - templateName: candidate-api-canary-health
+        args:
+          - name: ingress
+            value: candidate-api
+          - name: namespace
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+      steps:
+        - setWeight: 20
+        - pause: { duration: 2m }
+        - setWeight: 50
+        - pause: { duration: 5m }
+        - setWeight: 80
+        - pause: { duration: 5m }
